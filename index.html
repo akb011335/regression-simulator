@@ -1,0 +1,175 @@
+<html><head><base href="https://websim.ai/linear-regression-demo/"><title>Linear Regression with Noise - Interactive Demo</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    h1 {
+        color: #2c3e50;
+    }
+    .slider-container {
+        margin-bottom: 20px;
+    }
+    label {
+        display: inline-block;
+        width: 200px;
+    }
+    input[type="range"] {
+        width: 300px;
+    }
+    #chart-container {
+        width: 100%;
+        height: 400px;
+    }
+</style>
+</head>
+<body>
+    <h1>Linear Regression with Noise - Interactive Demo</h1>
+    
+    <div class="slider-container">
+        <label for="slope">Slope (a):</label>
+        <input type="range" id="slope" min="-10" max="10" step="0.1" value="2">
+        <span id="slope-value">2</span>
+    </div>
+    
+    <div class="slider-container">
+        <label for="noise">Noise control (c):</label>
+        <input type="range" id="noise" min="0" max="10" step="0.1" value="1">
+        <span id="noise-value">1</span>
+    </div>
+    
+    <div class="slider-container">
+        <label for="points">Number of sample points (n):</label>
+        <input type="range" id="points" min="10" max="1000" step="10" value="100">
+        <span id="points-value">100</span>
+    </div>
+    
+    <div id="chart-container">
+        <canvas id="regressionChart"></canvas>
+    </div>
+    
+    <div id="results">
+        <h3>Regression Results:</h3>
+        <p>Estimated slope (a): <span id="estimated-slope"></span></p>
+        <p>Estimated intercept: <span id="estimated-intercept"></span></p>
+    </div>
+
+    <script>
+    let chart;
+
+    function generateData(slope, noiseControl, numPoints) {
+        const x = [];
+        const y = [];
+        const yPred = [];
+        
+        for (let i = 0; i < numPoints; i++) {
+            const xVal = (Math.random() * 200) - 100;
+            const noise = noiseControl * (Math.random() * 2 - 1);
+            const yVal = slope * xVal + 50 + noise;
+            
+            x.push(xVal);
+            y.push(yVal);
+            yPred.push(slope * xVal + 50);
+        }
+        
+        return { x, y, yPred };
+    }
+
+    function linearRegression(x, y) {
+        const n = x.length;
+        let sumX = 0;
+        let sumY = 0;
+        let sumXY = 0;
+        let sumXX = 0;
+        
+        for (let i = 0; i < n; i++) {
+            sumX += x[i];
+            sumY += y[i];
+            sumXY += x[i] * y[i];
+            sumXX += x[i] * x[i];
+        }
+        
+        const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / n;
+        
+        return { slope, intercept };
+    }
+
+    function updateChart() {
+        const slope = parseFloat(document.getElementById('slope').value);
+        const noiseControl = parseFloat(document.getElementById('noise').value);
+        const numPoints = parseInt(document.getElementById('points').value);
+        
+        const data = generateData(slope, noiseControl, numPoints);
+        const regression = linearRegression(data.x, data.y);
+        
+        document.getElementById('slope-value').textContent = slope.toFixed(1);
+        document.getElementById('noise-value').textContent = noiseControl.toFixed(1);
+        document.getElementById('points-value').textContent = numPoints;
+        document.getElementById('estimated-slope').textContent = regression.slope.toFixed(4);
+        document.getElementById('estimated-intercept').textContent = regression.intercept.toFixed(4);
+        
+        if (chart) {
+            chart.data.datasets[0].data = data.x.map((x, i) => ({ x: x, y: data.y[i] }));
+            chart.data.datasets[1].data = [
+                { x: Math.min(...data.x), y: regression.slope * Math.min(...data.x) + regression.intercept },
+                { x: Math.max(...data.x), y: regression.slope * Math.max(...data.x) + regression.intercept }
+            ];
+            chart.update();
+        } else {
+            const ctx = document.getElementById('regressionChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Data Points',
+                        data: data.x.map((x, i) => ({ x: x, y: data.y[i] })),
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)'
+                    }, {
+                        label: 'Regression Line',
+                        data: [
+                            { x: Math.min(...data.x), y: regression.slope * Math.min(...data.x) + regression.intercept },
+                            { x: Math.max(...data.x), y: regression.slope * Math.max(...data.x) + regression.intercept }
+                        ],
+                        type: 'line',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'X'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Y'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    document.getElementById('slope').addEventListener('input', updateChart);
+    document.getElementById('noise').addEventListener('input', updateChart);
+    document.getElementById('points').addEventListener('input', updateChart);
+
+    updateChart();
+    </script>
+</body>
+</html>
